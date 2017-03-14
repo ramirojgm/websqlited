@@ -1,0 +1,27 @@
+GET get TEXT
+MIMETYPE text/html
+AS
+	SELECT '<table>';
+	SELECT '<tr><td>',user,'</td></tr>' FROM www.credentials;
+	SELECT '</table>';
+END
+
+GET chinook JSON
+AS
+	SELECT * FROM chinook.sqlite_master;
+END
+
+GET employees JSON
+AS
+	SELECT * FROM chinook.employees;
+
+END
+
+POST insert JSON
+TEXT user_name
+AS
+	INSERT INTO www.credentials (user,password)
+	VALUES (:user_name,'default');
+	
+	SELECT :inserted_id as user_id;
+END

@@ -15,18 +15,16 @@
 	along with the this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef CONFIG_H_
-#define CONFIG_H_
+#ifndef WSQL_H_
+#define WSQL_H_
 
-#define WEBSQLITE_MAX_FILE_CACHE_SIZE 15728640
-#define WEBSQLITE_MAX_FILE_SIZE 268435456
-#define WEBSQLITE_PLAYLOAD_SIZE 10485760
+#include <stdio.h>
+#include <string.h>
+#include <glib.h>
+#include <sqlite3.h>
+#include <json-glib/json-glib.h>
+#include <gwebsocket/gwebsocketservice.h>
+#include "config.h"
+#include "wsqltypes.h"
 
-#define WEBSQLITE_CONFIG_DIR "./etc/websqlite/"
-#define WEBSQLITE_LOG_DIR "./var/websqlite/log/"
-#define WEBSQLITE_DATA_DIR "./var/websqlite/data/"
-#define WEBSQLITE_CONTROLLER_DIR "./var/websqlite/controller/"
-#define WEBSQLITE_WEB_DIR "./var/websqlite/www/"
-
-
-#endif /* CONFIG_H_ */
+#endif /* WSQL_H_ */

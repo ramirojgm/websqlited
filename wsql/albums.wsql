@@ -1,0 +1,16 @@
+GET get TEXT
+MIMETYPE text/html
+AS
+	SELECT '<html>';
+	SELECT '<head><title>Albums</title></head><body><h4>Albums</h4><hr>';
+	SELECT '<table><tbody>';
+	SELECT '<tr><th>ID</th><th>Title</th></tr>';
+	SELECT '<tr><td>',AlbumId,'</td><td>',Title,'</td></tr>' FROM chinook.albums;
+	SELECT '</tbody></table>';
+	SELECT '</body></html>';
+END
+
+GET in_json JSON
+AS
+	SELECT * FROM chinook.albums;
+END

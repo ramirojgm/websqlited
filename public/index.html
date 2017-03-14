@@ -1,0 +1,28 @@
+<html>
+<head>
+	<script type="text/javascript" src="js/jquery.js"></script>
+</head>
+<body>
+	<h4>Hola Mundo</h4>
+	<hr>
+	<input id="user" type="text">
+	<input id="password" type="password">
+	<a id="save" href="#">Guardar</a>
+	<script type="text/javascript">
+		$(document).ready(function(){
+			$("#save").click(function(){
+				$.post(
+					"user/insert",
+					JSON.stringify({
+						user_name: $("#user").val(),
+						password: $("#password").val(),
+					})
+					,function(response){
+						console.log(response);
+					}
+				);
+			});
+		});
+	</script>
+</body>
+</html>
