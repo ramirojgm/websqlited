@@ -55,16 +55,20 @@ gint main (gint argc,gchar * argv[])
 	}
       fclose(mimetype_file);
     }
+
   //startup wsql
   GDir * wsql_dir = g_dir_open("wsql",0,NULL);
   if(wsql_dir)
     {
       while((name = g_dir_read_name(wsql_dir)))
 	{
-	  gchar * fullname = g_build_filename(g_get_current_dir(),"wsql",name,NULL);
-	  gchar * base = g_strndup(name,g_utf8_strlen(name,256) - 5);
-	  websqlite_parse(base,fullname);
-	  g_free(fullname);
+	  if(g_str_has_suffix(name,".wsql"))
+	    {
+	      gchar * fullname = g_build_filename(g_get_current_dir(),"wsql",name,NULL);
+	      gchar * base = g_strndup(name,g_utf8_strlen(name,256) - 5);
+	      websqlite_parse(base,fullname);
+	      g_free(fullname);
+	    }
 	}
       g_dir_close(wsql_dir);
     }
@@ -404,12 +408,12 @@ websqlite_action_exec(WebSQLiteAction * action,HttpRequest *request,HttpResponse
 	reader = json_reader_new(params);
     }
 
-  if(action->type == WSQL_ACTION_JSON)
+  if((action->type == WSQL_ACTION_JSON)||(action->type == WSQL_ACTION_TABLE))
     {
       JsonBuilder * builder = json_builder_new();
 
       json_builder_begin_object(builder);
-      json_builder_set_member_name(builder,"result");
+      json_builder_set_member_name(builder,"data");
       json_builder_begin_array(builder);
       for(gchar ** statement = action->statements;*statement;statement++)
       	{
@@ -482,49 +486,96 @@ websqlite_action_exec(WebSQLiteAction * action,HttpRequest *request,HttpResponse
 
 	      if(sqlite3_column_count(result) > 0)
 		{
-		  json_builder_begin_array(builder);
-		  while(sqlite3_step(result) == SQLITE_ROW)
+		  if(action->type == WSQL_ACTION_TABLE)
 		    {
-		      gint col_count = sqlite3_column_count(result);
 		      json_builder_begin_object(builder);
-		      for(gint col_index = 0;col_index < col_count;col_index++)
+		      json_builder_set_member_name(builder,"columns");
+		      json_builder_begin_array(builder);
+		      gint col_count = sqlite3_column_count(result);
+		      for(guint col_index = 0;col_index < col_count;col_index++)
+			  json_builder_add_string_value(builder,sqlite3_column_name(result,col_index));
+		      json_builder_end_array(builder);
+
+		      json_builder_set_member_name(builder,"rows");
+		      json_builder_begin_array(builder);
+		      while(sqlite3_step(result) == SQLITE_ROW)
 			{
-			  const gchar * name = sqlite3_column_name(result,col_index);
-			  if(name)
+			  json_builder_begin_array(builder);
+			  for(gint col_index = 0;col_index < col_count;col_index++)
 			    {
-			      json_builder_set_member_name(builder,name);
-			    }
-			  else
-			    {
-			      gchar * temp_name = g_strdup_printf("column%d",col_index);
-			      json_builder_set_member_name(builder,temp_name);
-			      g_free(temp_name);
-			    }
-			  switch(sqlite3_column_type(result,col_index))
-			  {
-			    case SQLITE_INTEGER:
-			      json_builder_add_int_value(builder,sqlite3_column_int64(result,col_index));
-			      break;
-			    case SQLITE_FLOAT:
-			      json_builder_add_double_value(builder,sqlite3_column_double(result,col_index));
-			      break;
-			    case SQLITE_TEXT:
-			      json_builder_add_string_value(builder,(gchar*)sqlite3_column_text(result,col_index));
-			      break;
-			    case SQLITE_BLOB:
+			      switch(sqlite3_column_type(result,col_index))
 			      {
-				gchar * base64 = g_base64_encode(sqlite3_column_blob(result,col_index),sqlite3_column_bytes(result,col_index));
-				json_builder_add_string_value(builder,base64);
-				g_free(base64);
+				case SQLITE_INTEGER:
+				  json_builder_add_int_value(builder,sqlite3_column_int64(result,col_index));
+				  break;
+				case SQLITE_FLOAT:
+				  json_builder_add_double_value(builder,sqlite3_column_double(result,col_index));
+				  break;
+				case SQLITE_TEXT:
+				  json_builder_add_string_value(builder,(gchar*)sqlite3_column_text(result,col_index));
+				  break;
+				case SQLITE_BLOB:
+				  {
+				    gchar * base64 = g_base64_encode(sqlite3_column_blob(result,col_index),sqlite3_column_bytes(result,col_index));
+				    json_builder_add_string_value(builder,base64);
+				    g_free(base64);
+				  }
+				  break;
+				case SQLITE_NULL:
+				  json_builder_add_null_value(builder);
 			      }
-			      break;
-			    case SQLITE_NULL:
-			      json_builder_add_null_value(builder);
-			  }
+			    }
+			  json_builder_end_array(builder);
 			}
+		      json_builder_end_array(builder);
 		      json_builder_end_object(builder);
 		    }
-		  json_builder_end_array(builder);
+		  else
+		    {
+		      json_builder_begin_array(builder);
+		      while(sqlite3_step(result) == SQLITE_ROW)
+			{
+			  gint col_count = sqlite3_column_count(result);
+			  json_builder_begin_object(builder);
+			  for(gint col_index = 0;col_index < col_count;col_index++)
+			    {
+			      const gchar * name = sqlite3_column_name(result,col_index);
+			      if(name)
+				{
+				  json_builder_set_member_name(builder,name);
+				}
+			      else
+				{
+				  gchar * temp_name = g_strdup_printf("col%d",col_index);
+				  json_builder_set_member_name(builder,temp_name);
+				  g_free(temp_name);
+				}
+			      switch(sqlite3_column_type(result,col_index))
+			      {
+				case SQLITE_INTEGER:
+				  json_builder_add_int_value(builder,sqlite3_column_int64(result,col_index));
+				  break;
+				case SQLITE_FLOAT:
+				  json_builder_add_double_value(builder,sqlite3_column_double(result,col_index));
+				  break;
+				case SQLITE_TEXT:
+				  json_builder_add_string_value(builder,(gchar*)sqlite3_column_text(result,col_index));
+				  break;
+				case SQLITE_BLOB:
+				  {
+				    gchar * base64 = g_base64_encode(sqlite3_column_blob(result,col_index),sqlite3_column_bytes(result,col_index));
+				    json_builder_add_string_value(builder,base64);
+				    g_free(base64);
+				  }
+				  break;
+				case SQLITE_NULL:
+				  json_builder_add_null_value(builder);
+			      }
+			    }
+			  json_builder_end_object(builder);
+			}
+		      json_builder_end_array(builder);
+		    }
 		}
 	      else
 		{
@@ -687,8 +738,6 @@ websqlite_get_mimetype(const gchar * filename)
       WebSQLiteMimeType * mimetype = (WebSQLiteMimeType *)iter->data;
       if(g_str_has_suffix(filename,mimetype->ext))
 	return mimetype->mimetype;
-      else
-	g_print("%s\n",mimetype->ext);
     }
   return NULL;
 }
@@ -786,9 +835,12 @@ websqlite_parse(const gchar * action_base,const gchar *  filename)
 			  HTTP_REQUEST_METHOD_POST :
 			  HTTP_REQUEST_METHOD_GET;
 		      action->name = g_strdup_printf("/%s/%s",action_base,action_name);
-		      action->type = g_ascii_strcasecmp(action_result_type,"json") == 0 ?
-			  WSQL_ACTION_JSON:
-			  WSQL_ACTION_TEXT;
+		      if(g_ascii_strcasecmp(action_result_type,"json") == 0)
+			action->type = WSQL_ACTION_JSON;
+		      else if (g_ascii_strcasecmp(action_result_type,"table") == 0)
+			action->type = WSQL_ACTION_TABLE;
+		      else
+			action->type = WSQL_ACTION_TEXT;
 		    }
 		  else
 		    {

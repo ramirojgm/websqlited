@@ -1,4 +1,4 @@
-GET get TEXT
+GET in_html TEXT
 MIMETYPE text/html
 AS
 	SELECT '<html>';
@@ -10,7 +10,12 @@ AS
 	SELECT '</body></html>';
 END
 
-GET in_json JSON
+GET albums.json JSON
 AS
-	SELECT * FROM chinook.albums;
+	SELECT * FROM chinook.playlist_track;
+END
+
+GET table_albums.json TABLE
+AS
+	SELECT * FROM chinook.playlist_track;
 END

@@ -55,7 +55,8 @@ enum _WebSQLiteType
 enum _WebSQLiteActionType
 {
   WSQL_ACTION_TEXT,
-  WSQL_ACTION_JSON
+  WSQL_ACTION_JSON,
+  WSQL_ACTION_TABLE
 };
 
 struct _WebSQLiteParam
